@@ -249,6 +249,41 @@ def extract_secret(payload: dict, query_params: dict) -> Optional[str]:
     return None
 
 
+def _parse_bool_value(val: Any) -> Optional[bool]:
+    if val is None:
+        return None
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return bool(val)
+    if isinstance(val, str):
+        s = val.strip().lower()
+        if s in ("true", "1", "yes", "on"):
+            return True
+        if s in ("false", "0", "no", "off"):
+            return False
+    return None
+
+
+def _extract_flag(payload: dict, query_params: dict, key: str, default: bool) -> bool:
+    for source in (query_params, payload):
+        if key in source:
+            parsed = _parse_bool_value(source[key])
+            if parsed is not None:
+                return parsed
+    return default
+
+
+def extract_force(payload: dict, query_params: dict) -> bool:
+    """Return True when force reprocess is requested (query or body)."""
+    return _extract_flag(payload, query_params, "force", False)
+
+
+def extract_write_comment(payload: dict, query_params: dict) -> bool:
+    """Return False when write_comment is explicitly disabled; default True."""
+    return _extract_flag(payload, query_params, "write_comment", True)
+
+
 def extract_bitrix_token(payload: dict) -> Optional[str]:
     """Extract optional Bitrix24 outgoing token from payload."""
     for key in ("auth[application_token]", "application_token", "outgoing_token"):

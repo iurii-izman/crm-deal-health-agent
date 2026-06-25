@@ -73,16 +73,68 @@ copy .env.example .env
 - `POST /bitrix/analyze-and-comment` — анализ + автозапись комментария в CRM.
 - `POST /bitrix/create-task` — создание задачи в Bitrix24.
 - `POST /bitrix/execute-action` — исполнение действия агента (задача/комментарий) в CRM (только при `ALLOW_BITRIX_WRITE=true`).
+- `POST /bitrix/outgoing-webhook` — handler для робота Битрикс24 «Исходящий Вебхук».
 
-## 9. Safety Notes (Меры предосторожности)
+## 9. Автоматический запуск из робота Битрикс24
+
+Поток обработки события:
+
+```text
+Сделка создана / переведена на стадию
+→ робот "Исходящий Вебхук"
+→ Handler URL
+→ FastAPI endpoint /bitrix/outgoing-webhook
+→ извлечение deal_id
+→ чтение сделки через Bitrix REST
+→ AI-анализ
+→ dry-run или комментарий в таймлайн
+→ SQLite audit log
+```
+
+В поле **«Хендлер»** робота Битрикс24 вставьте:
+
+```text
+https://<public-domain>/bitrix/outgoing-webhook?secret=<BITRIX_EVENT_SECRET>
+```
+
+**Локальный туннель (cloudflared):**
+
+```powershell
+cloudflared tunnel --url http://127.0.0.1:8000
+```
+
+Пример итогового handler URL (только placeholders):
+
+```text
+https://<generated>.trycloudflare.com/bitrix/outgoing-webhook?secret=dev-local-123
+```
+
+Пример `.env` для локальной отладки (без реальных секретов):
+
+```env
+APP_MODE=demo
+ALLOW_BITRIX_WRITE=false
+USE_OLLAMA=false
+BITRIX_WEBHOOK_URL=https://your-domain.bitrix24.ru/rest/USER_ID/WEBHOOK_CODE/
+BITRIX_EVENT_SECRET=dev-local-123
+EVENT_IDEMPOTENCY_TTL_SECONDS=600
+DEBUG_INCOMING_EVENTS=false
+```
+
+## 10. Safety Notes (Меры предосторожности)
 - **Webhook URL**: Никогда не показывайте код вебхука на публичных демо или интервью. Вводите его заранее или держите в `.env`. UI использует `type="password"`.
 - **Write Disabled**: По умолчанию запись в Bitrix24 всегда выключена, чтобы случайно не затронуть боевые данные.
 - **Draft Reply**: Блок "Черновик ответа клиенту" является *только черновиком*. Он не отправляется клиенту автоматически, а создан исключительно для помощи менеджеру.
+- **Не коммитьте `.env`**: файл с реальными секретами должен оставаться только локально.
+- **Handler URL с secret**: не показывайте URL с `?secret=` на записи экрана, скриншотах или в публичных чатах.
+- **После публичного теста**: перегенерируйте входящий webhook Bitrix24, если URL или код могли попасть в чужие руки.
+- **cloudflared / ngrok**: быстрый tunnel URL временный и меняется при каждом перезапуске — не используйте его как постоянный handler.
 
-## 10. Roadmap
+## 11. Roadmap
 - [x] **Block A**: Локальный LLM-агент (FastAPI + Ollama), базовая логика и детерминированный fallback.
 - [x] **Block B**: Интеграция с Bitrix24 (чтение сделок, запись комментариев в таймлайн).
 - [x] **Block C**: Архитектура Action Execution & Human Approval (создание действий из JSON-рекомендаций LLM).
 - [x] **SQLite logging**: Локальное логирование всех запусков агента для аудита и прозрачности AI.
 - [x] **Bitrix tasks**: Исполнение `create_task` экшенов (создание задач) в Битриксе.
+- [x] **Block D**: Bitrix24 outgoing webhook handler.
 - [ ] **Future**: Полноценная оркестрация через n8n или LangGraph, маппинг пользовательских (UF_) полей в реальном времени.

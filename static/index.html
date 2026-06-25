@@ -40,6 +40,14 @@
     
     .tab-content { display: none; }
     .tab-content.active { display: block; }
+
+    .hint { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+    .hint code { background: var(--panel2); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .checkbox-row { display: flex; gap: 20px; margin-bottom: 12px; flex-wrap: wrap; }
+    .checkbox-row label { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+    .checkbox-row input[type="checkbox"] { width: auto; margin: 0; }
+    .dry-run-banner { padding: 12px 16px; border-radius: 10px; background: #78350f33; border: 1px solid #92400e; color: #fcd34d; font-size: 13px; margin-bottom: 16px; }
     
     /* Grid & Cards */
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
@@ -120,6 +128,7 @@
     <div class="tabs">
       <div class="tab active" onclick="openTab('tab-demo', this)">Demo</div>
       <div class="tab" onclick="openTab('tab-bitrix', this)">Bitrix24</div>
+      <div class="tab" onclick="openTab('tab-robot', this)">Robot Handler</div>
       <div class="tab" onclick="openTab('tab-history', this)">History</div>
     </div>
 
@@ -182,6 +191,61 @@
       </div>
     </div>
 
+    <!-- TAB: ROBOT HANDLER -->
+    <div id="tab-robot" class="tab-content">
+      <div class="card">
+        <div class="card-title">Bitrix24 Robot Handler</div>
+        <div id="robotDryRunBanner" class="dry-run-banner" style="display:none;">
+          ALLOW_BITRIX_WRITE=false — outgoing webhook runs in <strong>dry-run</strong> mode. No timeline comments will be written to Bitrix24.
+        </div>
+        <div class="hint">
+          In the Bitrix24 robot field <strong>«Хендлер»</strong>, paste:
+          <code>https://&lt;public-tunnel-domain&gt;/bitrix/outgoing-webhook?secret=&lt;BITRIX_EVENT_SECRET&gt;</code>.
+          Do <strong>not</strong> use <code>127.0.0.1</code> — Bitrix24 cannot reach localhost.
+          For local testing use <code>cloudflared</code>, <code>ngrok</code>, or a VPS.
+          Backend endpoint: <code>/bitrix/outgoing-webhook</code>.
+        </div>
+
+        <div class="field-row">
+          <div>
+            <label style="font-size:13px;color:var(--muted);">Public tunnel URL</label>
+            <input id="robotTunnelUrl" type="url" placeholder="https://example.trycloudflare.com" />
+          </div>
+          <div>
+            <label style="font-size:13px;color:var(--muted);">Event secret</label>
+            <input id="robotEventSecret" type="password" placeholder="BITRIX_EVENT_SECRET value" autocomplete="off" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div>
+            <label style="font-size:13px;color:var(--muted);">Deal ID</label>
+            <input id="robotDealId" type="number" placeholder="123" />
+          </div>
+          <div>
+            <label style="font-size:13px;color:var(--muted);">Stage ID (optional)</label>
+            <input id="robotStageId" type="text" placeholder="NEW" />
+          </div>
+        </div>
+        <div class="checkbox-row">
+          <label><input id="robotForceReprocess" type="checkbox" /> Force reprocess</label>
+          <label><input id="robotWriteComment" type="checkbox" checked /> Write comment</label>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+          <button id="buildHandlerUrlBtn" class="btn secondary">Build Handler URL</button>
+          <button id="testOutgoingWebhookBtn" class="btn primary">Test Outgoing Webhook Locally</button>
+        </div>
+
+        <label style="font-size:13px;color:var(--muted);">Handler URL (for Bitrix24 robot «Хендлер»)</label>
+        <input id="robotHandlerUrl" type="text" readonly placeholder="Click Build Handler URL" style="font-family:ui-monospace,monospace;font-size:13px;" />
+
+        <div style="margin-top:16px;">
+          <div class="card-title" style="font-size:15px;">Local Test Result</div>
+          <pre id="robotTestOutput" style="background:var(--bg);padding:16px;border-radius:12px;border:1px solid var(--line);color:var(--muted);min-height:80px;">Awaiting test...</pre>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB: HISTORY -->
     <div id="tab-history" class="tab-content">
       <div class="card">
@@ -217,6 +281,15 @@
     const runsTableContainer = document.getElementById('runsTableContainer');
     const runDetailsContainer = document.getElementById('runDetailsContainer');
     const runDetailsOutput = document.getElementById('runDetailsOutput');
+    const robotDryRunBanner = document.getElementById('robotDryRunBanner');
+    const robotTunnelUrl = document.getElementById('robotTunnelUrl');
+    const robotEventSecret = document.getElementById('robotEventSecret');
+    const robotDealId = document.getElementById('robotDealId');
+    const robotStageId = document.getElementById('robotStageId');
+    const robotForceReprocess = document.getElementById('robotForceReprocess');
+    const robotWriteComment = document.getElementById('robotWriteComment');
+    const robotHandlerUrl = document.getElementById('robotHandlerUrl');
+    const robotTestOutput = document.getElementById('robotTestOutput');
 
     let currentDeal = null;
     let currentAgentResult = null;
@@ -255,7 +328,10 @@
           
           badgesEl.innerHTML += ` ${modeChip} ${writeChip} ${modelChip}`;
         }
-      } catch(e) { console.warn('Failed to load config', e); }
+        if (robotDryRunBanner) {
+          robotDryRunBanner.style.display = backendConfig.allow_bitrix_write ? 'none' : 'block';
+        }
+      } catch(e) { /* config load failed */ }
     }
 
     function value(x) { return x === null || x === undefined || x === "" ? "—" : x; }
@@ -467,12 +543,80 @@
       }
     }
 
+    function buildHandlerUrl() {
+      const base = robotTunnelUrl.value.trim().replace(/\/+$/, '');
+      const secret = robotEventSecret.value.trim();
+      if (!base) {
+        robotHandlerUrl.value = '';
+        robotTestOutput.textContent = 'Enter a public tunnel URL first.';
+        return;
+      }
+      if (!secret) {
+        robotHandlerUrl.value = '';
+        robotTestOutput.textContent = 'Enter the event secret first.';
+        return;
+      }
+      robotHandlerUrl.value = `${base}/bitrix/outgoing-webhook?secret=${encodeURIComponent(secret)}`;
+      robotTestOutput.textContent = 'Handler URL built. Paste it into the Bitrix24 robot «Хендлер» field (without force=true).';
+    }
+
+    async function testOutgoingWebhookLocally() {
+      const secret = robotEventSecret.value.trim();
+      const dealIdVal = parseInt(robotDealId.value, 10);
+      if (!secret) {
+        robotTestOutput.textContent = 'Enter the event secret to test locally.';
+        return;
+      }
+      if (!Number.isFinite(dealIdVal) || dealIdVal <= 0) {
+        robotTestOutput.textContent = 'Enter a valid Deal ID.';
+        return;
+      }
+
+      const params = new URLSearchParams({ secret });
+      if (robotForceReprocess.checked) params.set('force', 'true');
+
+      const payload = {
+        event: 'ONCRMDEALUPDATE',
+        data: { FIELDS: { ID: dealIdVal } },
+        write_comment: robotWriteComment.checked,
+      };
+      const stage = robotStageId.value.trim();
+      if (stage) payload.data.FIELDS.STAGE_ID = stage;
+
+      robotTestOutput.textContent = 'Sending local test request...';
+      const btn = document.getElementById('testOutgoingWebhookBtn');
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/bitrix/outgoing-webhook?${params.toString()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        const lines = [
+          `HTTP ${res.status}`,
+          backendConfig.allow_bitrix_write ? 'Mode: live write enabled' : 'Mode: DRY-RUN (ALLOW_BITRIX_WRITE=false)',
+        ];
+        if (data.dry_run) lines.push('Response: dry_run=true');
+        if (data.skipped) lines.push(`Skipped: ${data.reason || 'yes'}`);
+        if (data.reason && !data.skipped) lines.push(`Reason: ${data.reason}`);
+        lines.push('', JSON.stringify(data, null, 2));
+        robotTestOutput.textContent = lines.join('\n');
+      } catch (e) {
+        robotTestOutput.textContent = `Error: ${esc(e.message)}`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     analyzeBtn.addEventListener('click', analyzeDemo);
     document.getElementById('testBitrixBtn').addEventListener('click', testBitrix);
     document.getElementById('readBitrixBtn').addEventListener('click', readBitrixDeal);
     document.getElementById('analyzeBitrixBtn').addEventListener('click', analyzeBitrixDeal);
     loadRunsBtn.addEventListener('click', loadRuns);
     benchmarkBtn.addEventListener('click', runBenchmark);
+    document.getElementById('buildHandlerUrlBtn').addEventListener('click', buildHandlerUrl);
+    document.getElementById('testOutgoingWebhookBtn').addEventListener('click', testOutgoingWebhookLocally);
     initConfig().then(() => loadDeal());
   </script>
 </body>

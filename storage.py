@@ -156,22 +156,26 @@ def mark_event_processed(
     event_type: str,
     stage_id: Optional[str],
     status: str,
+    replace: bool = False,
 ) -> None:
     """
-    Record that an event has been processed. Safe on UNIQUE constraint conflict
-    (an older record for this key stays in place).
+    Record that an event has been processed.
+
+    With replace=False (default), INSERT OR IGNORE keeps the first record.
+    With replace=True, INSERT OR REPLACE updates the row (used for force reprocess).
 
     NOTE: never stores secret, token, or webhook URL.
     """
     created_at = _utcnow_iso()
+    sql = """
+        INSERT OR {verb} INTO processed_events
+            (created_at, event_key, deal_id, event_type, stage_id, status)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """.format(verb="REPLACE" if replace else "IGNORE")
     try:
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT OR IGNORE INTO processed_events
-                    (created_at, event_key, deal_id, event_type, stage_id, status)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (created_at, event_key, deal_id, event_type, stage_id, status))
+            cursor.execute(sql, (created_at, event_key, deal_id, event_type, stage_id, status))
             conn.commit()
     except Exception:
         # Never let a logging failure crash the main request

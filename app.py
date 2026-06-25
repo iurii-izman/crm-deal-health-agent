@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import time
 from pathlib import Path
 from typing import Optional
@@ -21,6 +22,7 @@ from bitrix_mapper import deal_to_context, format_agent_comment
 from bitrix_event_parser import (
     parse_bitrix_request, extract_deal_id, extract_event_type,
     extract_stage_id, extract_secret, extract_bitrix_token, sanitize_payload,
+    extract_force, extract_write_comment,
 )
 from storage import (
     init_db, log_run, get_recent_runs, get_run_details,
@@ -41,9 +43,35 @@ APP_MODE = os.getenv("APP_MODE", "demo").lower()
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
+_REST_WEBHOOK_PATTERN = re.compile(
+    r"https?://[^\s'\"]+/rest/\d+/[A-Za-z0-9_\-]+/?",
+    re.IGNORECASE,
+)
+
+_SENSITIVE_VALUE_PATTERNS = [
+    (re.compile(r"access_token=[^\s&'\"]+", re.IGNORECASE), "access_token=***"),
+    (re.compile(r"refresh_token=[^\s&'\"]+", re.IGNORECASE), "refresh_token=***"),
+    (re.compile(r"application_token=[^\s&'\"]+", re.IGNORECASE), "application_token=***"),
+    (re.compile(r"secret=[^\s&'\"]+", re.IGNORECASE), "secret=***"),
+    (re.compile(r"webhook_url=[^\s&'\"]+", re.IGNORECASE), "webhook_url=***"),
+]
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def safe_error_message(exc: Exception) -> str:
+    """Return an error string with webhook URLs, tokens, and secrets masked."""
+    message = str(exc)
+    webhook_url = os.getenv("BITRIX_WEBHOOK_URL", "").strip()
+    if webhook_url and webhook_url in message:
+        message = message.replace(webhook_url, "***BITRIX_WEBHOOK_URL***")
+    message = _REST_WEBHOOK_PATTERN.sub("***BITRIX_WEBHOOK_URL***", message)
+    for pattern, replacement in _SENSITIVE_VALUE_PATTERNS:
+        message = pattern.sub(replacement, message)
+    return message
 
 
 def run_agent(deal: DealContext) -> AgentResult:
@@ -194,7 +222,7 @@ def bitrix_test(req: BitrixRequest):
         result = client.test()
         return BitrixApiResult(ok=True, method="profile", result=result)
     except Exception as exc:
-        return BitrixApiResult(ok=False, method="profile", error=str(exc))
+        return BitrixApiResult(ok=False, method="profile", error=safe_error_message(exc))
 
 
 @app.post("/bitrix/read-deal", response_model=DealContext)
@@ -226,7 +254,7 @@ def bitrix_write_comment(req: BitrixCommentRequest):
         result = client.add_deal_comment(req.deal_id, req.comment)
         return BitrixApiResult(ok=True, method="crm.timeline.comment.add", result=result)
     except Exception as exc:
-        return BitrixApiResult(ok=False, method="crm.timeline.comment.add", error=str(exc))
+        return BitrixApiResult(ok=False, method="crm.timeline.comment.add", error=safe_error_message(exc))
 
 
 @app.post("/bitrix/analyze-and-comment", response_model=BitrixApiResult)
@@ -260,7 +288,11 @@ def bitrix_analyze_and_comment(req: BitrixAnalyzeRequest):
         )
     except Exception as exc:
         log_run("bitrix", "error", deal.model_dump() if deal else None, None)
-        return BitrixApiResult(ok=False, method="crm.deal.get + analyze + crm.timeline.comment.add", error=str(exc))
+        return BitrixApiResult(
+            ok=False,
+            method="crm.deal.get + analyze + crm.timeline.comment.add",
+            error=safe_error_message(exc),
+        )
 
 
 @app.post("/bitrix/create-task", response_model=BitrixApiResult)
@@ -277,7 +309,7 @@ def bitrix_create_task(req: BitrixTaskRequest):
         )
         return BitrixApiResult(ok=True, method="tasks.task.add", result=result)
     except Exception as exc:
-        return BitrixApiResult(ok=False, method="tasks.task.add", error=str(exc))
+        return BitrixApiResult(ok=False, method="tasks.task.add", error=safe_error_message(exc))
 
 
 @app.post("/bitrix/execute-action", response_model=BitrixApiResult)
@@ -305,7 +337,7 @@ def bitrix_execute_action(req: ActionExecutionRequest):
             return BitrixApiResult(ok=False, method="execute-action", error=f"Action type '{action.type}' is not supported yet.")
 
     except Exception as exc:
-        return BitrixApiResult(ok=False, method="execute-action", error=str(exc))
+        return BitrixApiResult(ok=False, method="execute-action", error=safe_error_message(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -343,6 +375,9 @@ async def bitrix_outgoing_webhook(request: Request):
     deal_id = extract_deal_id(payload)
     event_type = extract_event_type(payload)
     stage_id = extract_stage_id(payload)
+    force = extract_force(payload, query_params)
+    write_comment = extract_write_comment(payload, query_params)
+    debug_payload = sanitized if debug else None
 
     if debug:
         # Only log sanitized payload — never the raw one
@@ -364,15 +399,15 @@ async def bitrix_outgoing_webhook(request: Request):
             ok=False,
             event_type=event_type,
             stage_id=stage_id,
-            extracted_payload=sanitized,
+            extracted_payload=debug_payload,
             error="Could not extract deal_id from the incoming payload.",
         )
 
-    # 6. Idempotency check
+    # 6. Idempotency check (skipped when force=True)
     ttl = int(os.getenv("EVENT_IDEMPOTENCY_TTL_SECONDS", "600"))
     event_key = build_event_key(deal_id, event_type, stage_id)
 
-    if is_recent_event_processed(event_key, ttl):
+    if not force and is_recent_event_processed(event_key, ttl):
         return BitrixOutgoingEventResult(
             ok=True,
             skipped=True,
@@ -381,7 +416,10 @@ async def bitrix_outgoing_webhook(request: Request):
             deal_id=deal_id,
             event_type=event_type,
             stage_id=stage_id,
+            extracted_payload=debug_payload,
         )
+
+    force_reason = "force_reprocess" if force else None
 
     # 7. Read deal from Bitrix24
     deal = None
@@ -397,7 +435,8 @@ async def bitrix_outgoing_webhook(request: Request):
             deal_id=deal_id,
             event_type=event_type,
             stage_id=stage_id,
-            error=f"Failed to read deal from Bitrix24: {type(exc).__name__}: {exc}",
+            extracted_payload=debug_payload,
+            error=f"Failed to read deal from Bitrix24: {type(exc).__name__}: {safe_error_message(exc)}",
         )
 
     # 8. Run agent
@@ -412,42 +451,64 @@ async def bitrix_outgoing_webhook(request: Request):
             deal_id=deal_id,
             event_type=event_type,
             stage_id=stage_id,
-            error=f"Agent analysis failed: {type(exc).__name__}: {exc}",
+            extracted_payload=debug_payload,
+            error=f"Agent analysis failed: {type(exc).__name__}: {safe_error_message(exc)}",
         )
 
     # 9. Format comment
     comment = format_agent_comment(result)
+    mark_kw = {"replace": force}
 
-    # 10. Dry-run or live write
-    if not is_bitrix_write_allowed():
-        mark_event_processed(event_key, deal_id, event_type, stage_id, "dry-run")
+    # 10. write_comment=false — analyze only, never write to Bitrix24
+    if not write_comment:
+        mark_event_processed(event_key, deal_id, event_type, stage_id, "dry-run", **mark_kw)
         return BitrixOutgoingEventResult(
             ok=True,
             dry_run=True,
+            reason="write_comment_disabled",
             event_key=event_key,
             deal_id=deal_id,
             event_type=event_type,
             stage_id=stage_id,
             agent_result=result.model_dump(),
             planned_action={"comment": comment},
+            extracted_payload=debug_payload,
+        )
+
+    # 11. Dry-run or live write
+    if not is_bitrix_write_allowed():
+        mark_event_processed(event_key, deal_id, event_type, stage_id, "dry-run", **mark_kw)
+        return BitrixOutgoingEventResult(
+            ok=True,
+            dry_run=True,
+            reason=force_reason,
+            event_key=event_key,
+            deal_id=deal_id,
+            event_type=event_type,
+            stage_id=stage_id,
+            agent_result=result.model_dump(),
+            planned_action={"comment": comment},
+            extracted_payload=debug_payload,
         )
 
     # Live mode: write comment to Bitrix24 timeline
     try:
         bitrix_result = client.add_deal_comment(deal_id, comment)
-        mark_event_processed(event_key, deal_id, event_type, stage_id, "success")
+        mark_event_processed(event_key, deal_id, event_type, stage_id, "success", **mark_kw)
         return BitrixOutgoingEventResult(
             ok=True,
             dry_run=False,
+            reason=force_reason,
             event_key=event_key,
             deal_id=deal_id,
             event_type=event_type,
             stage_id=stage_id,
             agent_result=result.model_dump(),
             bitrix_result=bitrix_result,
+            extracted_payload=debug_payload,
         )
     except Exception as exc:
-        mark_event_processed(event_key, deal_id, event_type, stage_id, "error")
+        mark_event_processed(event_key, deal_id, event_type, stage_id, "error", **mark_kw)
         return BitrixOutgoingEventResult(
             ok=False,
             event_key=event_key,
@@ -455,7 +516,8 @@ async def bitrix_outgoing_webhook(request: Request):
             event_type=event_type,
             stage_id=stage_id,
             agent_result=result.model_dump(),
-            error=f"Failed to write comment to Bitrix24: {type(exc).__name__}: {exc}",
+            extracted_payload=debug_payload,
+            error=f"Failed to write comment to Bitrix24: {type(exc).__name__}: {safe_error_message(exc)}",
         )
 
 
@@ -511,4 +573,4 @@ def model_benchmark():
             "risk_level": result.risk_level
         }
     except Exception as exc:
-        return {"error": str(exc)}
+        return {"error": safe_error_message(exc)}
