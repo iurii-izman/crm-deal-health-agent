@@ -85,3 +85,19 @@ class BitrixApiResult(BaseModel):
     dry_run: bool = False
     message: Optional[str] = None
     planned_action: Any = None
+
+
+class BitrixOutgoingEventResult(BaseModel):
+    ok: bool
+    dry_run: bool = False
+    skipped: bool = False
+    reason: Optional[str] = None
+    event_key: Optional[str] = None
+    deal_id: Optional[int] = None
+    event_type: Optional[str] = None
+    stage_id: Optional[str] = None
+    extracted_payload: Any = None
+    agent_result: Optional[Any] = None
+    bitrix_result: Optional[Any] = None
+    planned_action: Optional[Any] = None
+    error: Optional[str] = None

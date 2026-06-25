@@ -1,10 +1,11 @@
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 DB_PATH = str(Path(__file__).resolve().parent / "agent_runs.db")
+
 
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:
@@ -28,7 +29,23 @@ def init_db():
                 status TEXT NOT NULL
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS processed_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL,
+                event_key TEXT NOT NULL UNIQUE,
+                deal_id INTEGER,
+                event_type TEXT,
+                stage_id TEXT,
+                status TEXT
+            )
+        """)
         conn.commit()
+
+
+def _utcnow_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+
 
 def log_run(
     source: str,
@@ -36,12 +53,12 @@ def log_run(
     deal_context: Optional[Dict[str, Any]] = None,
     agent_result: Optional[Dict[str, Any]] = None
 ):
-    created_at = datetime.utcnow().isoformat() + "Z"
-    
+    created_at = _utcnow_iso()
+
     deal_id = deal_context.get("deal_id") if deal_context else None
     deal_title = deal_context.get("title") if deal_context else None
     raw_deal_json = json.dumps(deal_context, ensure_ascii=False) if deal_context else None
-    
+
     model_used = agent_result.get("model_used") if agent_result else None
     risk_level = agent_result.get("risk_level") if agent_result else None
     priority = agent_result.get("priority") if agent_result else None
@@ -72,6 +89,7 @@ def log_run(
         ))
         conn.commit()
 
+
 def get_recent_runs(limit: int = 20) -> List[Dict[str, Any]]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
@@ -84,6 +102,7 @@ def get_recent_runs(limit: int = 20) -> List[Dict[str, Any]]:
         """, (limit,))
         return [dict(row) for row in cursor.fetchall()]
 
+
 def get_run_details(run_id: int) -> Optional[Dict[str, Any]]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
@@ -91,3 +110,69 @@ def get_run_details(run_id: int) -> Optional[Dict[str, Any]]:
         cursor.execute("SELECT * FROM agent_runs WHERE id = ?", (run_id,))
         row = cursor.fetchone()
         return dict(row) if row else None
+
+
+# ---------------------------------------------------------------------------
+# Idempotency helpers for Block D outgoing webhook handler
+# ---------------------------------------------------------------------------
+
+
+def build_event_key(deal_id: int, event_type: str, stage_id: Optional[str]) -> str:
+    """Build a deterministic idempotency key for a Bitrix24 event."""
+    stage_part = stage_id or "no_stage"
+    return f"{event_type}:{deal_id}:{stage_part}"
+
+
+def is_recent_event_processed(event_key: str, ttl_seconds: int) -> bool:
+    """
+    Return True if an event with this key was processed within ttl_seconds.
+    Uses UTC timestamps stored in ISO format.
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT created_at FROM processed_events WHERE event_key = ?",
+            (event_key,)
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return False
+
+        try:
+            created_at_str = row["created_at"].rstrip("Z")
+            created_dt = datetime.fromisoformat(created_at_str).replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            age_seconds = (now - created_dt).total_seconds()
+            return age_seconds < ttl_seconds
+        except Exception:
+            # If we can't parse the timestamp, treat as not processed
+            return False
+
+
+def mark_event_processed(
+    event_key: str,
+    deal_id: int,
+    event_type: str,
+    stage_id: Optional[str],
+    status: str,
+) -> None:
+    """
+    Record that an event has been processed. Safe on UNIQUE constraint conflict
+    (an older record for this key stays in place).
+
+    NOTE: never stores secret, token, or webhook URL.
+    """
+    created_at = _utcnow_iso()
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR IGNORE INTO processed_events
+                    (created_at, event_key, deal_id, event_type, stage_id, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (created_at, event_key, deal_id, event_type, stage_id, status))
+            conn.commit()
+    except Exception:
+        # Never let a logging failure crash the main request
+        pass
