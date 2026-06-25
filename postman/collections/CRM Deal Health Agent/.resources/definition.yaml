@@ -1,0 +1,10 @@
+$kind: collection
+name: CRM Deal Health Agent
+description: BOS CRM Deal Health Agent FastAPI API. Provides local deal-health analysis endpoints plus Bitrix24 integration endpoints (test connection, read deals, analyze, write comments, create tasks, execute actions) along with health checks, demo data, run history, and model status/benchmark utilities.
+variables:
+  - key: baseUrl
+    value: 'http://localhost:8000'
+  - key: webhookUrl
+    value: 'https://your-portal.bitrix24.ru/rest/1/your_webhook_code/'
+  - key: dealId
+    value: '101'

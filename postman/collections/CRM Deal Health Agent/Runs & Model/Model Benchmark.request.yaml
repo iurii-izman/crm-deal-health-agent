@@ -1,0 +1,5 @@
+$kind: http-request
+name: Model Benchmark
+method: GET
+url: '{{baseUrl}}/model/benchmark'
+order: 4000

@@ -1,0 +1,22 @@
+$kind: http-request
+name: Execute Action
+method: POST
+url: '{{baseUrl}}/bitrix/execute-action'
+order: 7000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "webhook_url": "https://your-portal.bitrix24.ru/rest/1/your_webhook_code/",
+      "deal_id": 101,
+      "action": {
+        "type": "create_task",
+        "title": "Prepare commercial proposal",
+        "owner": "Менеджер продаж",
+        "priority": "high",
+        "rationale": "Client is ready to move forward"
+      }
+    }

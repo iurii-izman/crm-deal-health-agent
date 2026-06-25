@@ -1,0 +1,5 @@
+$kind: http-request
+name: Analyze Demo Deal
+method: GET
+url: '{{baseUrl}}/analyze-demo'
+order: 1000

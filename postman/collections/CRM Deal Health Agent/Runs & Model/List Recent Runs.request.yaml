@@ -1,0 +1,5 @@
+$kind: http-request
+name: List Recent Runs
+method: GET
+url: '{{baseUrl}}/runs'
+order: 1000

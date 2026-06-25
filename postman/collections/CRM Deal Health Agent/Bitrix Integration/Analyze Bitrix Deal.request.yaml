@@ -1,0 +1,15 @@
+$kind: http-request
+name: Analyze Bitrix Deal
+method: POST
+url: '{{baseUrl}}/bitrix/analyze-deal'
+order: 3000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "webhook_url": "https://your-portal.bitrix24.ru/rest/1/your_webhook_code/",
+      "deal_id": 101
+    }

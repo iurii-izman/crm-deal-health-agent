@@ -1,0 +1,5 @@
+$kind: http-request
+name: Model Status
+method: GET
+url: '{{baseUrl}}/model/status'
+order: 3000

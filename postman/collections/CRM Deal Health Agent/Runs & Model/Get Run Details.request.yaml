@@ -1,0 +1,8 @@
+$kind: http-request
+name: Get Run Details
+method: GET
+url: '{{baseUrl}}/runs/:run_id'
+order: 2000
+pathVariables:
+  - key: run_id
+    value: '1'

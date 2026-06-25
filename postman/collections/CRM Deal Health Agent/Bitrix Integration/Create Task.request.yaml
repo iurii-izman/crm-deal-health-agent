@@ -1,0 +1,18 @@
+$kind: http-request
+name: Create Task
+method: POST
+url: '{{baseUrl}}/bitrix/create-task'
+order: 6000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "webhook_url": "https://your-portal.bitrix24.ru/rest/1/your_webhook_code/",
+      "deal_id": 101,
+      "title": "Follow up with client",
+      "description": "Call the client to clarify budget and decision maker",
+      "responsible_id": 1
+    }
