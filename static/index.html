@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>BOS CRM Agent</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { 
+      --bg: #09090b; --panel: #18181b; --panel2: #27272a; 
+      --text: #f4f4f5; --muted: #a1a1aa; --line: #3f3f46; 
+      --brand: #3b82f6; --brand-hover: #2563eb;
+      --risk-high: #ef4444; --risk-med: #f59e0b; --risk-low: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+    
+    .container { max-width: 1300px; margin: 0 auto; padding: 24px; }
+    
+    /* Hero */
+    .hero { text-align: center; margin-bottom: 40px; padding: 40px 20px; background: radial-gradient(circle at center, #1e3a8a33 0, transparent 70%); border-radius: 24px; border: 1px solid var(--line); }
+    .hero h1 { font-size: 42px; font-weight: 700; margin: 0 0 12px; letter-spacing: -0.04em; }
+    .hero .tagline { font-size: 18px; color: var(--muted); max-width: 600px; margin: 0 auto 24px; }
+    
+    /* Badges */
+    .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 24px; }
+    .badge { padding: 6px 12px; border-radius: 99px; font-size: 13px; font-weight: 600; background: var(--panel2); border: 1px solid var(--line); display: inline-flex; align-items: center; gap: 6px; }
+    .badge.brand { color: #60a5fa; border-color: #1d4ed8; background: #1e3a8a33; }
+    
+    /* Scheme */
+    .scheme { display: flex; justify-content: center; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; color: var(--muted); flex-wrap: wrap; }
+    .scheme-step { padding: 8px 16px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); }
+    .scheme-arr { color: var(--line); font-weight: bold; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+    .tab { padding: 12px 24px; font-size: 15px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    /* Grid & Cards */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+    .card-title { font-size: 18px; font-weight: 600; margin: 0 0 16px; display: flex; align-items: center; justify-content: space-between; }
+    
+    /* Key-Value */
+    .kv { display: grid; grid-template-columns: 130px 1fr; gap: 12px; font-size: 14px; margin-bottom: 16px; }
+    .k { color: var(--muted); }
+    .v { font-weight: 500; }
+    
+    /* Elements */
+    .message { background: var(--panel2); padding: 16px; border-radius: 12px; font-size: 14px; color: #e2e8f0; border: 1px solid var(--line); }
+    .btn { appearance: none; border: 0; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn.primary { background: var(--brand); color: #fff; }
+    .btn.primary:hover { background: var(--brand-hover); }
+    .btn.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
+    .btn.secondary:hover { background: var(--line); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    /* Result styling */
+    .draft { font-family: ui-monospace, monospace; font-size: 13px; background: #000; padding: 16px; border-radius: 12px; color: #a5b4fc; overflow-x: auto; margin-top: 8px;}
+    .action-card { background: #000; border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-top: 12px; }
+    .action-title { font-weight: 600; margin-bottom: 8px; font-size: 15px; }
+    .action-meta { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+    
+    /* Inputs */
+    input, textarea { width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); padding: 12px; border-radius: 10px; font-family: inherit; font-size: 14px; margin-bottom: 12px; }
+    
+    /* Script panel */
+    .script-panel { margin-top: 40px; padding: 20px; background: #1e293b; border-left: 4px solid #38bdf8; border-radius: 0 12px 12px 0; font-size: 14px; color: #bae6fd; }
+    .script-panel h4 { margin: 0 0 8px; color: #38bdf8; }
+    .script-panel ul { margin: 0; padding-left: 20px; }
+    .script-panel li { margin-bottom: 6px; }
+
+    /* Tags */
+    .chip { padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; display: inline-block; background: var(--panel2); border: 1px solid var(--line); margin-right: 4px; margin-bottom: 4px;}
+    .risk-high { background: #7f1d1d; color: #fca5a5; border-color: #991b1b; }
+    .risk-medium { background: #78350f; color: #fcd34d; border-color: #92400e; }
+    .risk-low { background: #14532d; color: #86efac; border-color: #166534; }
+    .priority-high { color: #f59e0b; font-weight: 700; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 12px; border-bottom: 1px solid var(--line); text-align: left; }
+    th { color: var(--muted); font-weight: 500; }
+    tr:hover { background: var(--panel2); cursor: pointer; }
+    
+    pre { margin: 0; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; word-wrap: break-word;}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>CRM Deal Health Agent</h1>
+      <p class="tagline">AI workflow layer for CRM deal control, risk detection and human-approved actions.</p>
+      
+      <div class="badges" id="modeBadges">
+        <span class="badge">Local LLM</span>
+        <span class="badge">Bitrix24 REST</span>
+        <span class="badge brand">Human Approval</span>
+        <span class="badge">Audit Log</span>
+        <span class="badge">No paid API</span>
+      </div>
+
+      <div class="scheme">
+        <div class="scheme-step">Bitrix24 Deal</div>
+        <div class="scheme-arr">→</div>
+        <div class="scheme-step" style="border-color: var(--brand); color: #60a5fa;">Agent Analysis</div>
+        <div class="scheme-arr">→</div>
+        <div class="scheme-step">Risk & Fields</div>
+        <div class="scheme-arr">→</div>
+        <div class="scheme-step brand">Human Approval</div>
+        <div class="scheme-arr">→</div>
+        <div class="scheme-step">CRM Comment/Tasks</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="openTab('tab-demo', this)">Demo</div>
+      <div class="tab" onclick="openTab('tab-bitrix', this)">Bitrix24</div>
+      <div class="tab" onclick="openTab('tab-history', this)">History</div>
+    </div>
+
+    <!-- TAB: DEMO -->
+    <div id="tab-demo" class="tab-content active">
+      <div style="margin-bottom: 16px; display: flex; gap: 12px; align-items: center;">
+        <button id="analyzeBtn" class="btn primary">Analyze Demo Deal</button>
+        <button id="benchmarkBtn" class="btn secondary">Benchmark Model</button>
+        <span id="benchmarkResult" style="font-size: 13px; color: var(--muted);"></span>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">CRM Source Context</div>
+          <div id="demo-deal-render"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Agent Analysis & Approval</div>
+          <div id="demo-result-render">
+            <div class="message">Click "Analyze Demo Deal" to run local analysis.</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="script-panel">
+        <h4>Demo Script Panel (For Interview)</h4>
+        <ul>
+          <li>"This is a local agentic CRM workflow prototype."</li>
+          <li>"The agent reads CRM context, detects risks, proposes next actions."</li>
+          <li>"Critical actions require human approval before touching the database."</li>
+          <li>"Bitrix24 is the CRM system; the agent is an external workflow layer."</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- TAB: BITRIX24 -->
+    <div id="tab-bitrix" class="tab-content">
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-title">Bitrix24 Webhook Config</div>
+        <div style="display: flex; gap: 12px; max-width: 600px;">
+          <input id="webhookUrl" type="password" placeholder="https://your-domain.bitrix24.ru/rest/1/code/" />
+          <input id="dealId" type="number" placeholder="Deal ID" style="width: 120px;" />
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 8px;">
+          <button id="testBitrixBtn" class="btn secondary">Test Connection</button>
+          <button id="readBitrixBtn" class="btn secondary">Read Deal</button>
+          <button id="analyzeBitrixBtn" class="btn primary">Analyze & Approve</button>
+        </div>
+        <pre id="bitrixOutput" style="margin-top: 16px; color: var(--muted); padding: 12px; background: var(--bg); border-radius: 8px;">Awaiting action...</pre>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">CRM Source Context</div>
+          <div id="bx-deal-render"><div class="message">Load a deal first.</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Agent Analysis & Approval</div>
+          <div id="bx-result-render"><div class="message">Run analysis to see results.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: HISTORY -->
+    <div id="tab-history" class="tab-content">
+      <div class="card">
+        <div class="card-title">
+          Audit Log
+          <button id="loadRunsBtn" class="btn secondary" style="padding: 6px 12px; font-size: 12px;">Refresh</button>
+        </div>
+        <div id="runsTableContainer" style="overflow-x: auto;">
+          <div class="message">Click Refresh to load runs.</div>
+        </div>
+        <div id="runDetailsContainer" style="margin-top: 24px; display: none;">
+          <div class="card-title" style="font-size: 15px;">Run JSON Payload</div>
+          <pre id="runDetailsOutput" style="background: var(--bg); padding: 16px; border-radius: 12px; border: 1px solid var(--line); color: var(--muted);"></pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const demoDealEl = document.getElementById('demo-deal-render');
+    const demoResultEl = document.getElementById('demo-result-render');
+    const bxDealEl = document.getElementById('bx-deal-render');
+    const bxResultEl = document.getElementById('bx-result-render');
+    
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const benchmarkBtn = document.getElementById('benchmarkBtn');
+    const benchmarkResult = document.getElementById('benchmarkResult');
+    const webhookUrl = document.getElementById('webhookUrl');
+    const dealId = document.getElementById('dealId');
+    const bitrixOutput = document.getElementById('bitrixOutput');
+    const loadRunsBtn = document.getElementById('loadRunsBtn');
+    const runsTableContainer = document.getElementById('runsTableContainer');
+    const runDetailsContainer = document.getElementById('runDetailsContainer');
+    const runDetailsOutput = document.getElementById('runDetailsOutput');
+
+    let currentDeal = null;
+    let currentAgentResult = null;
+    let backendConfig = {};
+    let modelConfig = {};
+    let activeTab = 'demo';
+
+    function openTab(id, el) {
+      document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      el.classList.add('active');
+      activeTab = id.replace('tab-', '');
+      if (activeTab === 'history') loadRuns();
+    }
+
+    async function initConfig() {
+      try {
+        const [resHealth, resModel] = await Promise.all([
+          fetch('/health'), fetch('/model/status')
+        ]);
+        backendConfig = await resHealth.json();
+        modelConfig = await resModel.json();
+        
+        const badgesEl = document.getElementById('modeBadges');
+        if (badgesEl) {
+          const modeChip = backendConfig.app_mode === 'live' 
+            ? `<span class="badge" style="border-color:#ef4444; color:#ef4444;">🔴 LIVE MODE</span>` 
+            : `<span class="badge" style="border-color:#22c55e; color:#22c55e;">🟢 DEMO MODE</span>`;
+            
+          const writeChip = backendConfig.allow_bitrix_write 
+            ? `<span class="badge" style="color:#f59e0b;">WRITE: ON</span>` 
+            : `<span class="badge">WRITE: OFF (Dry-Run)</span>`;
+            
+          const modelChip = `<span class="badge">🤖 ${modelConfig.current_model} ${modelConfig.fast_mode ? '(FAST)' : ''}</span>`;
+          
+          badgesEl.innerHTML += ` ${modeChip} ${writeChip} ${modelChip}`;
+        }
+      } catch(e) { console.warn('Failed to load config', e); }
+    }
+
+    function value(x) { return x === null || x === undefined || x === "" ? "—" : x; }
+    function esc(s) { return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])); }
+
+    function getDealHTML(deal) {
+      return `<div class="kv">
+        <div class="k">Title</div><div class="v">${esc(value(deal.title))}</div>
+        <div class="k">Client</div><div class="v">${esc(value(deal.client_name))}</div>
+        <div class="k">Stage</div><div class="v">${esc(value(deal.stage))}</div>
+        <div class="k">Budget</div><div class="v">${esc(value(deal.budget))}</div>
+        <div class="k">Owner</div><div class="v">${esc(value(deal.responsible))}</div>
+      </div>
+      <div class="message">${esc(value(deal.client_message))}</div>
+      <details style="margin-top: 12px;">
+        <summary style="cursor: pointer; color: var(--brand); font-size: 13px; font-weight: 600;">Show Raw Context (JSON)</summary>
+        <pre style="margin-top: 8px; background: #000; padding: 12px; border-radius: 8px;">${esc(JSON.stringify({
+          raw_stage_id: deal.raw_stage_id,
+          contact_id: deal.contact_id,
+          company_id: deal.company_id,
+          created_at: deal.created_at,
+          custom_fields: deal.custom_fields
+        }, null, 2))}</pre>
+      </details>`;
+    }
+
+    function getResultHTML(r) {
+      const missing = (r.missing_fields || []).map(x => `<span class="chip">${esc(x)}</span>`).join("");
+      const btnText = backendConfig.allow_bitrix_write ? "Approve & Execute" : "Execute (Dry-Run)";
+      const isHighPriority = String(r.priority).toLowerCase() === 'high';
+      
+      const actions = (r.recommended_actions || []).map((a, idx) => {
+        return `<div class="action-card" id="action-${idx}">
+          <div class="action-title">${esc(a.title)}</div>
+          <div class="action-meta">Type: <span style="color:#e2e8f0">${esc(a.type)}</span> • Priority: <span class="${a.priority.toLowerCase()==='high'?'priority-high':''}">${esc(a.priority)}</span></div>
+          ${a.rationale ? `<div class="action-meta" style="color:var(--text);">${esc(a.rationale)}</div>` : ""}
+          <div style="margin-top: 12px; display: flex; align-items: center; gap: 12px;">
+            <button class="btn primary" style="padding: 6px 14px; font-size: 13px;" onclick="executeAction(${idx})">${btnText}</button>
+            <span id="action-status-${idx}" style="font-size: 13px; font-weight: 500;"></span>
+          </div>
+        </div>`;
+      }).join("");
+
+      return `<div style="margin-bottom: 16px;">
+        <span class="chip risk-${esc(r.risk_level)}">Risk: ${esc(r.risk_level).toUpperCase()}</span>
+        <span class="chip ${isHighPriority ? 'risk-medium' : ''}">Priority: ${esc(r.priority).toUpperCase()}</span>
+        <span class="chip">Case: ${esc(r.case_type)}</span>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <div style="font-weight: 600; font-size: 13px; color: var(--muted); margin-bottom: 4px;">Risk Analysis</div>
+        <div class="message" style="${r.risk_level==='high'?'border-color: #ef4444; background: #7f1d1d20;':''}">${esc(r.risk_explanation)}</div>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <div style="font-weight: 600; font-size: 13px; color: var(--muted); margin-bottom: 4px;">Missing Fields</div>
+        <div>${missing || '<span class="chip risk-low">None</span>'}</div>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <div style="font-weight: 600; font-size: 13px; color: var(--muted); margin-bottom: 4px;">Draft Reply</div>
+        <div class="draft">${esc(r.draft_reply)}</div>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <div style="font-weight: 600; font-size: 13px; color: var(--muted); margin-bottom: 4px;">Actions (Human Approval)</div>
+        ${actions || '<div class="message">No actions required.</div>'}
+      </div>`;
+    }
+
+    async function postJson(url, body) {
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return await res.json();
+    }
+    
+    function bitrixPayload() {
+      const payload = {};
+      if (webhookUrl.value.trim()) payload.webhook_url = webhookUrl.value.trim();
+      const id = parseInt(dealId.value, 10);
+      if (Number.isFinite(id)) payload.deal_id = id;
+      return payload;
+    }
+
+    async function loadDeal() {
+      const res = await fetch('/demo-deal');
+      currentDeal = await res.json();
+      demoDealEl.innerHTML = getDealHTML(currentDeal);
+    }
+
+    async function analyzeDemo() {
+      analyzeBtn.disabled = true; analyzeBtn.textContent = 'Analyzing...';
+      demoResultEl.innerHTML = '<div class="message">Analyzing deal context via Local LLM...</div>';
+      try {
+        currentAgentResult = await postJson('/analyze', currentDeal);
+        demoResultEl.innerHTML = getResultHTML(currentAgentResult);
+      } catch (e) {
+        demoResultEl.innerHTML = `<div class="message" style="color:#ef4444">Error: ${esc(e.message)}</div>`;
+      } finally {
+        analyzeBtn.disabled = false; analyzeBtn.textContent = 'Analyze Demo Deal';
+      }
+    }
+
+    async function testBitrix() {
+      bitrixOutput.textContent = 'Testing connection...';
+      bitrixOutput.textContent = JSON.stringify(await postJson('/bitrix/test', bitrixPayload()), null, 2);
+    }
+
+    async function readBitrixDeal() {
+      bitrixOutput.textContent = 'Reading deal...';
+      const data = await postJson('/bitrix/read-deal', bitrixPayload());
+      currentDeal = data;
+      bxDealEl.innerHTML = getDealHTML(data);
+      bitrixOutput.textContent = 'Deal loaded successfully.';
+    }
+
+    async function analyzeBitrixDeal() {
+      const btn = document.getElementById('analyzeBitrixBtn');
+      btn.disabled = true; btn.textContent = 'Analyzing...';
+      bxResultEl.innerHTML = '<div class="message">Running analysis...</div>';
+      try {
+        const data = await postJson('/bitrix/analyze-deal', bitrixPayload());
+        currentAgentResult = data;
+        bxResultEl.innerHTML = getResultHTML(data);
+        bitrixOutput.textContent = 'Analysis complete.';
+      } catch(e) {
+        bxResultEl.innerHTML = `<div class="message" style="color:#ef4444">Error: ${esc(e.message)}</div>`;
+      } finally {
+        btn.disabled = false; btn.textContent = 'Analyze & Approve';
+      }
+    }
+
+    async function executeAction(idx) {
+      if (activeTab === 'bitrix' && (!webhookUrl.value.trim() || !dealId.value.trim())) {
+        alert("Please provide Webhook URL and Deal ID."); return;
+      }
+      if (backendConfig.allow_bitrix_write) {
+        if (!confirm('LIVE MODE is ON! Are you sure you want to execute this action in Bitrix24?')) return;
+      }
+      const action = currentAgentResult.recommended_actions[idx];
+      const payload = bitrixPayload(); payload.action = action;
+      
+      const statusEl = document.getElementById(`action-status-${idx}`);
+      const btnEl = document.querySelector(`#action-${idx} button`);
+      try {
+        btnEl.disabled = true; btnEl.textContent = "Executing..."; statusEl.textContent = "";
+        const res = await postJson('/bitrix/execute-action', payload);
+        if (res.ok) {
+          btnEl.textContent = res.dry_run ? "Done (Dry-Run)" : "Done";
+          btnEl.style.background = res.dry_run ? "#f59e0b" : "#22c55e";
+          btnEl.style.borderColor = res.dry_run ? "#f59e0b" : "#22c55e";
+          statusEl.textContent = res.dry_run ? `Dry-Run (${res.method})` : `Success (${res.method})`;
+          statusEl.style.color = res.dry_run ? "#fcd34d" : "#86efac";
+        } else {
+          btnEl.disabled = false; btnEl.textContent = "Retry";
+          statusEl.textContent = `Error: ${res.error}`; statusEl.style.color = "#ef4444";
+        }
+      } catch(e) {
+        btnEl.disabled = false; btnEl.textContent = "Retry";
+        statusEl.textContent = `Error: ${e.message}`; statusEl.style.color = "#ef4444";
+      }
+    }
+    
+    async function loadRuns() {
+      loadRunsBtn.disabled = true; loadRunsBtn.textContent = 'Loading...';
+      try {
+        const runs = await (await fetch('/runs')).json();
+        let html = `<table><thead><tr><th>Date</th><th>Source</th><th>Title</th><th>Risk</th><th>Model</th><th>Status</th></tr></thead><tbody>`;
+        runs.forEach(r => {
+          html += `<tr onclick="loadRunDetails(${r.id})">
+            <td>${new Date(r.created_at).toLocaleString()}</td>
+            <td>${esc(value(r.source))}</td>
+            <td>${esc(value(r.deal_title))}</td>
+            <td><span class="chip risk-${esc(r.risk_level)}">${esc(value(r.risk_level))}</span></td>
+            <td>${esc(value(r.model_used))}</td>
+            <td>${esc(value(r.status))}</td>
+          </tr>`;
+        });
+        html += `</tbody></table>`;
+        runsTableContainer.innerHTML = html;
+      } catch (e) {
+        runsTableContainer.innerHTML = `<div class="message" style="color:#ef4444;">Error: ${esc(e.message)}</div>`;
+      } finally {
+        loadRunsBtn.disabled = false; loadRunsBtn.textContent = 'Refresh';
+      }
+    }
+
+    async function loadRunDetails(runId) {
+      runDetailsContainer.style.display = 'block';
+      runDetailsOutput.textContent = 'Loading...';
+      try {
+        const run = await (await fetch(`/runs/${runId}`)).json();
+        let details = {};
+        try { details.raw_deal = JSON.parse(run.raw_deal_json); } catch(e){}
+        try { details.raw_result = JSON.parse(run.raw_result_json); } catch(e){}
+        runDetailsOutput.textContent = JSON.stringify({ metadata: run, ...details }, null, 2);
+      } catch (e) {
+        runDetailsOutput.textContent = `Error: ${esc(e.message)}`;
+      }
+    }
+
+    async function runBenchmark() {
+      benchmarkBtn.disabled = true; benchmarkBtn.textContent = 'Benchmarking...'; benchmarkResult.textContent = '';
+      try {
+        const data = await (await fetch('/model/benchmark')).json();
+        if (data.error) throw new Error(data.error);
+        benchmarkResult.textContent = `${data.duration_ms}ms (Risk: ${data.risk_level})`;
+        benchmarkResult.style.color = "#22c55e";
+      } catch (e) {
+        benchmarkResult.textContent = `Error: ${e.message}`; benchmarkResult.style.color = "#ef4444";
+      } finally {
+        benchmarkBtn.disabled = false; benchmarkBtn.textContent = 'Benchmark Model';
+      }
+    }
+
+    analyzeBtn.addEventListener('click', analyzeDemo);
+    document.getElementById('testBitrixBtn').addEventListener('click', testBitrix);
+    document.getElementById('readBitrixBtn').addEventListener('click', readBitrixDeal);
+    document.getElementById('analyzeBitrixBtn').addEventListener('click', analyzeBitrixDeal);
+    loadRunsBtn.addEventListener('click', loadRuns);
+    benchmarkBtn.addEventListener('click', runBenchmark);
+    initConfig().then(() => loadDeal());
+  </script>
+</body>
+</html>
