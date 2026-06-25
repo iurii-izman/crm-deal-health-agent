@@ -1,9 +1,10 @@
 import sqlite3
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-DB_PATH = "agent_runs.db"
+DB_PATH = str(Path(__file__).resolve().parent / "agent_runs.db")
 
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:

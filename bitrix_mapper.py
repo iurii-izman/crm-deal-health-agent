@@ -23,7 +23,10 @@ def summarize_custom_fields(cf: Dict[str, Any]) -> str:
 
 
 def deal_to_context(deal: Dict[str, Any]) -> DealContext:
-    deal_id = int(deal.get("ID") or deal.get("id"))
+    raw_id = deal.get("ID") or deal.get("id")
+    if raw_id is None:
+        raise ValueError(f"Bitrix deal response is missing 'ID' field: {list(deal.keys())}")
+    deal_id = int(raw_id)
     title = _non_empty(deal.get("TITLE")) or f"Deal {deal_id}"
 
     opportunity = _non_empty(deal.get("OPPORTUNITY"))

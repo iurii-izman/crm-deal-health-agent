@@ -267,5 +267,3 @@ def model_benchmark():
         }
     except Exception as exc:
         return {"error": str(exc)}
-
-

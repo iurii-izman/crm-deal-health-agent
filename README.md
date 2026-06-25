@@ -13,12 +13,12 @@
 1. Установите Python 3.10+
 2. Склонируйте репозиторий и перейдите в папку:
    ```cmd
-   cd bos_crm_agent_block_b_v01
+   cd crm-deal-health-agent
    ```
 3. Создайте и активируйте виртуальное окружение:
    ```cmd
-   python -m venv venv
-   venv\Scripts\activate
+   python -m venv .venv
+   .venv\Scripts\activate
    ```
 4. Установите зависимости:
    ```cmd
@@ -28,7 +28,7 @@
    ```cmd
    uvicorn app:app --reload
    ```
-6. Откройте красивый UI в браузере: `http://127.0.0.1:8000/static/index.html`
+6. Откройте UI в браузере: `http://127.0.0.1:8000`
 
 ## 4. Настройка `.env`
 Скопируйте файл конфигурации:
@@ -57,14 +57,22 @@ copy .env.example .env
 3. Убедитесь, что URL оканчивается слэшем и не содержит названия конкретного метода.
 
 ## 8. Доступные Endpoints
+- `GET /` — главный интерфейс (UI).
 - `GET /health` — статус бэкенда и режима (Live/Demo).
 - `GET /model/status` — параметры и текущая модель Ollama, включая Fast Mode.
 - `GET /model/benchmark` — мгновенный замер скорости работы модели.
 - `GET /demo-deal` — отдает демо-сделку из `demo_deal.json`.
-- `POST /analyze` — анализ сделки через LLM.
+- `GET /analyze-demo` — быстрый анализ демо-сделки без тела запроса.
+- `POST /analyze` — анализ произвольной сделки через LLM.
+- `GET /runs` — список последних 20 запусков агента.
+- `GET /runs/{id}` — детальный лог конкретного запуска.
+- `POST /bitrix/test` — проверка соединения с Bitrix24 webhook.
 - `POST /bitrix/read-deal` — чтение реальной сделки по ID.
 - `POST /bitrix/analyze-deal` — сквозной пайплайн: чтение и анализ сделки из CRM.
-- `POST /bitrix/execute-action` — отправка задачи/комментария обратно в CRM (только при `ALLOW_BITRIX_WRITE=true`).
+- `POST /bitrix/write-comment` — запись комментария в таймлайн сделки.
+- `POST /bitrix/analyze-and-comment` — анализ + автозапись комментария в CRM.
+- `POST /bitrix/create-task` — создание задачи в Bitrix24.
+- `POST /bitrix/execute-action` — исполнение действия агента (задача/комментарий) в CRM (только при `ALLOW_BITRIX_WRITE=true`).
 
 ## 9. Safety Notes (Меры предосторожности)
 - **Webhook URL**: Никогда не показывайте код вебхука на публичных демо или интервью. Вводите его заранее или держите в `.env`. UI использует `type="password"`.
