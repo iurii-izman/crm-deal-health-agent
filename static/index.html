@@ -6,27 +6,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { 
-      --bg: #09090b; --panel: #18181b; --panel2: #27272a; 
-      --text: #f4f4f5; --muted: #a1a1aa; --line: #3f3f46; 
+    :root {
+      --bg: #09090b; --panel: #18181b; --panel2: #27272a;
+      --text: #f4f4f5; --muted: #a1a1aa; --line: #3f3f46;
       --brand: #3b82f6; --brand-hover: #2563eb;
       --risk-high: #ef4444; --risk-med: #f59e0b; --risk-low: #22c55e;
     }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
-    
+
     .container { max-width: 1300px; margin: 0 auto; padding: 24px; }
-    
+
     /* Hero */
     .hero { text-align: center; margin-bottom: 40px; padding: 40px 20px; background: radial-gradient(circle at center, #1e3a8a33 0, transparent 70%); border-radius: 24px; border: 1px solid var(--line); }
     .hero h1 { font-size: 42px; font-weight: 700; margin: 0 0 12px; letter-spacing: -0.04em; }
     .hero .tagline { font-size: 18px; color: var(--muted); max-width: 600px; margin: 0 auto 24px; }
-    
+
     /* Badges */
     .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 24px; }
     .badge { padding: 6px 12px; border-radius: 99px; font-size: 13px; font-weight: 600; background: var(--panel2); border: 1px solid var(--line); display: inline-flex; align-items: center; gap: 6px; }
     .badge.brand { color: #60a5fa; border-color: #1d4ed8; background: #1e3a8a33; }
-    
+
     /* Scheme */
     .scheme { display: flex; justify-content: center; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; color: var(--muted); flex-wrap: wrap; }
     .scheme-step { padding: 8px 16px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); }
@@ -37,7 +37,7 @@
     .tab { padding: 12px 24px; font-size: 15px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
     .tab:hover { color: var(--text); }
     .tab.active { color: var(--brand); border-bottom-color: var(--brand); }
-    
+
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
@@ -48,17 +48,17 @@
     .checkbox-row label { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
     .checkbox-row input[type="checkbox"] { width: auto; margin: 0; }
     .dry-run-banner { padding: 12px 16px; border-radius: 10px; background: #78350f33; border: 1px solid #92400e; color: #fcd34d; font-size: 13px; margin-bottom: 16px; }
-    
+
     /* Grid & Cards */
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
     .card-title { font-size: 18px; font-weight: 600; margin: 0 0 16px; display: flex; align-items: center; justify-content: space-between; }
-    
+
     /* Key-Value */
     .kv { display: grid; grid-template-columns: 130px 1fr; gap: 12px; font-size: 14px; margin-bottom: 16px; }
     .k { color: var(--muted); }
     .v { font-weight: 500; }
-    
+
     /* Elements */
     .message { background: var(--panel2); padding: 16px; border-radius: 12px; font-size: 14px; color: #e2e8f0; border: 1px solid var(--line); }
     .btn { appearance: none; border: 0; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
@@ -67,16 +67,16 @@
     .btn.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
     .btn.secondary:hover { background: var(--line); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    
+
     /* Result styling */
     .draft { font-family: ui-monospace, monospace; font-size: 13px; background: #000; padding: 16px; border-radius: 12px; color: #a5b4fc; overflow-x: auto; margin-top: 8px;}
     .action-card { background: #000; border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-top: 12px; }
     .action-title { font-weight: 600; margin-bottom: 8px; font-size: 15px; }
     .action-meta { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
-    
+
     /* Inputs */
     input, textarea { width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); padding: 12px; border-radius: 10px; font-family: inherit; font-size: 14px; margin-bottom: 12px; }
-    
+
     /* Script panel */
     .script-panel { margin-top: 40px; padding: 20px; background: #1e293b; border-left: 4px solid #38bdf8; border-radius: 0 12px 12px 0; font-size: 14px; color: #bae6fd; }
     .script-panel h4 { margin: 0 0 8px; color: #38bdf8; }
@@ -89,12 +89,12 @@
     .risk-medium { background: #78350f; color: #fcd34d; border-color: #92400e; }
     .risk-low { background: #14532d; color: #86efac; border-color: #166534; }
     .priority-high { color: #f59e0b; font-weight: 700; }
-    
+
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { padding: 12px; border-bottom: 1px solid var(--line); text-align: left; }
     th { color: var(--muted); font-weight: 500; }
     tr:hover { background: var(--panel2); cursor: pointer; }
-    
+
     pre { margin: 0; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; word-wrap: break-word;}
   </style>
 </head>
@@ -103,7 +103,7 @@
     <div class="hero">
       <h1>CRM Deal Health Agent</h1>
       <p class="tagline">AI workflow layer for CRM deal control, risk detection and human-approved actions.</p>
-      
+
       <div class="badges" id="modeBadges">
         <span class="badge">Local LLM</span>
         <span class="badge">Bitrix24 REST</span>
@@ -151,7 +151,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="script-panel">
         <h4>Demo Script Panel (For Interview)</h4>
         <ul>
@@ -270,7 +270,7 @@
     const demoResultEl = document.getElementById('demo-result-render');
     const bxDealEl = document.getElementById('bx-deal-render');
     const bxResultEl = document.getElementById('bx-result-render');
-    
+
     const analyzeBtn = document.getElementById('analyzeBtn');
     const benchmarkBtn = document.getElementById('benchmarkBtn');
     const benchmarkResult = document.getElementById('benchmarkResult');
@@ -313,19 +313,19 @@
         ]);
         backendConfig = await resHealth.json();
         modelConfig = await resModel.json();
-        
+
         const badgesEl = document.getElementById('modeBadges');
         if (badgesEl) {
-          const modeChip = backendConfig.app_mode === 'live' 
-            ? `<span class="badge" style="border-color:#ef4444; color:#ef4444;">🔴 LIVE MODE</span>` 
+          const modeChip = backendConfig.app_mode === 'live'
+            ? `<span class="badge" style="border-color:#ef4444; color:#ef4444;">🔴 LIVE MODE</span>`
             : `<span class="badge" style="border-color:#22c55e; color:#22c55e;">🟢 DEMO MODE</span>`;
-            
-          const writeChip = backendConfig.allow_bitrix_write 
-            ? `<span class="badge" style="color:#f59e0b;">WRITE: ON</span>` 
+
+          const writeChip = backendConfig.allow_bitrix_write
+            ? `<span class="badge" style="color:#f59e0b;">WRITE: ON</span>`
             : `<span class="badge">WRITE: OFF (Dry-Run)</span>`;
-            
+
           const modelChip = `<span class="badge">🤖 ${modelConfig.current_model} ${modelConfig.fast_mode ? '(FAST)' : ''}</span>`;
-          
+
           badgesEl.innerHTML += ` ${modeChip} ${writeChip} ${modelChip}`;
         }
         if (robotDryRunBanner) {
@@ -362,7 +362,7 @@
       const missing = (r.missing_fields || []).map(x => `<span class="chip">${esc(x)}</span>`).join("");
       const btnText = backendConfig.allow_bitrix_write ? "Approve & Execute" : "Execute (Dry-Run)";
       const isHighPriority = String(r.priority).toLowerCase() === 'high';
-      
+
       const actions = (r.recommended_actions || []).map((a, idx) => {
         return `<div class="action-card" id="action-${idx}">
           <div class="action-title">${esc(a.title)}</div>
@@ -403,7 +403,7 @@
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       return await res.json();
     }
-    
+
     function bitrixPayload() {
       const payload = {};
       if (webhookUrl.value.trim()) payload.webhook_url = webhookUrl.value.trim();
@@ -469,7 +469,7 @@
       }
       const action = currentAgentResult.recommended_actions[idx];
       const payload = bitrixPayload(); payload.action = action;
-      
+
       const statusEl = document.getElementById(`action-status-${idx}`);
       const btnEl = document.querySelector(`#action-${idx} button`);
       try {
@@ -490,7 +490,7 @@
         statusEl.textContent = `Error: ${e.message}`; statusEl.style.color = "#ef4444";
       }
     }
-    
+
     async function loadRuns() {
       loadRunsBtn.disabled = true; loadRunsBtn.textContent = 'Loading...';
       try {
